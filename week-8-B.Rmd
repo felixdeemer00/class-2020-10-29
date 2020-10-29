@@ -32,27 +32,76 @@ Today, we will be considering `att_chg` as a function of `treatment`.
 
 * Create the mathematical formula for that model here.
 
+$$ att\_chg_i = \beta_1 x_{treated,i} + \beta_2 x_{control,i} + \epsilon_i$$
+
 * Describe the ideal Preceptor Table.
+
+Would have Preceptor's attitude change in both a controlled and a treatment situation.
 
 * Write a few sentences about whether or not our data will allow us to answer this question.
 
-
+Our data can offer us a picture of the potential outcome, and could be used to
+make a prediction. However, the accuracy may not be high as the sample 
+population may not be representative of the Preceptor as an individual, so the 
+change is likely to be different.
 
 ## Scene 2
 
 **Prompt:** There are two ways to interpret our question. The first involves our expectation. We can also think of this as the long-term average, if we did the same experiment over and over again. (Assume that Preceptor is always assigned to the treatment.) What is your posterior probability distribution for Preceptor's *expected* `att_chg`?
 
+```{r}
 
+preceptor_obj <- stan_glm(data = week_8,
+                          family = gaussian(),
+                          att_chg ~ treatment - 1,
+                          refresh = 0)
+
+preceptor_obj %>%
+  as_tibble() %>%
+  select(-sigma) %>%
+  rename(treated = treatmentTreated,
+         control = treatmentControl) %>%
+  pivot_longer(cols = treated:control, 
+               names_to = "parameter",
+               values_to = "attitude") %>%
+  ggplot(aes(x = attitude, fill = parameter)) +
+    geom_density(alpha = 0.5)
+
+```
 
 ## Scene 3
 
 **Prompt:** The second way to interpret the question is with regard to a single individual. What will happen to Preceptor next week? Provide a Posterior Predictive Distribution for what you predict will be Preceptor's `att_chg` after treatment.
 
+```{r}
 
+new_obs <- tibble(treatment = "treated")
+
+pp <- posterior_predict(object = preceptor_obj) %>%    
+  as_tibble() %>%    
+  mutate(across(everything(), as.numeric))
+
+pp %>%
+  ggplot(aes(x = `1`)) +
+    geom_histogram(aes(y = after_stat(count/sum(count))), bins = 100) +
+    scale_y_continuous(labels = scales::percent_format()) +
+  theme_classic() +
+  labs(title = "Posterior Probability Distribution for Treatment",
+       x = "Attitude Change",
+       y = "Probability")
+
+```
 
 ## Challenge Problem
 
 Create the posterior distribution for the average treatment effect of `treatment` within subsets of the data defined by `liberal` and by `gender`.  In other words, there should be 4 plots total: `liberal == FALSE`, `liberal == TRUE`, `gender == "Male"` and `gender == "Female"`. Put all these posteriors in the same graphic. (One approach is to use the **patchwork** package.) The elegant approach is to create a function which takes a tibble and a restriction, and then returns the plot.
 
+```{r}
+
+libtrue_obs <- tibble(liberal = TRUE)
+libfalse_obs <- tibble(liberal = FALSE)
+male_obs <- tibble(gender = "male")
+
+```
 
 
